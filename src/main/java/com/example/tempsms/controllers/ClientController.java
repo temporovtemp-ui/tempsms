@@ -1,7 +1,7 @@
 package com.example.tempsms.controllers;
 
-import com.example.tempsms.models.Client;
-import com.example.tempsms.repositories.ClientRepository;
+import com.example.tempsms.entities.Client;
+import com.example.tempsms.services.ClientService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -12,16 +12,16 @@ import java.util.Collection;
 @RestController
 @RequestMapping("/api/clients")
 public class ClientController {
-    private final ClientRepository repository;
 
-    public ClientController(ClientRepository repository) {
-        this.repository = repository;
+    private final ClientService service;
+
+    public ClientController(ClientService service) {
+        this.service = service;
     }
 
     @PostMapping
     public ResponseEntity<Client> createClient(@RequestBody Client client) {
-        client.setId(null);
-        Client created = repository.save(client);
+        Client created = service.create(client);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
@@ -32,30 +32,28 @@ public class ClientController {
 
     @GetMapping
     public ResponseEntity<Collection<Client>> getAll() {
-        return ResponseEntity.ok(repository.findAll());
+        return ResponseEntity.ok(service.getAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Client> getById(@PathVariable Long id) {
-        Client client = repository.findById(id);
-        return client != null
-                ? ResponseEntity.ok(client)
-                : ResponseEntity.notFound().build();
+        return service.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Client> updateById(@PathVariable Long id, @RequestBody Client client) {
-        Client existing = repository.findById(id);
-        if (existing == null)
-            return ResponseEntity.notFound().build();
-        existing.setName(client.getName());
-        existing.setPhone(client.getPhone());
-        return ResponseEntity.ok(existing);
+        return service.update(id, client)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        repository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        boolean deleted = service.delete(id);
+        return deleted
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 }

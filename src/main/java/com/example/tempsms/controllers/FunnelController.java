@@ -1,8 +1,7 @@
 package com.example.tempsms.controllers;
 
-import com.example.tempsms.models.Client;
-import com.example.tempsms.models.Funnel;
-import com.example.tempsms.repositories.FunnelRepository;
+import com.example.tempsms.entities.Funnel;
+import com.example.tempsms.services.FunnelService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -13,16 +12,16 @@ import java.util.Collection;
 @RestController
 @RequestMapping("/api/funnels")
 public class FunnelController {
-    private final FunnelRepository repository;
 
-    public FunnelController(FunnelRepository repository) {
-        this.repository = repository;
+    private final FunnelService service;
+
+    public FunnelController(FunnelService service) {
+        this.service = service;
     }
 
     @PostMapping
     public ResponseEntity<Funnel> createFunnel(@RequestBody Funnel funnel) {
-        funnel.setId(null);
-        Funnel created = repository.save(funnel);
+        Funnel created = service.create(funnel);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
@@ -33,30 +32,28 @@ public class FunnelController {
 
     @GetMapping
     public ResponseEntity<Collection<Funnel>> getAll() {
-        return ResponseEntity.ok(repository.findAll());
+        return ResponseEntity.ok(service.getAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Funnel> getById(@PathVariable Long id) {
-        Funnel funnel = repository.findById(id);
-        return funnel != null
-                ? ResponseEntity.ok(funnel)
-                : ResponseEntity.notFound().build();
+        return service.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Funnel> updateById(@PathVariable Long id, @RequestBody Funnel funnel) {
-        Funnel existing = repository.findById(id);
-        if (existing == null)
-            return ResponseEntity.notFound().build();
-        existing.setName(funnel.getName());
-        existing.setDescription(funnel.getDescription());
-        return ResponseEntity.ok(existing);
+        return service.update(id, funnel)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        repository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        boolean deleted = service.delete(id);
+        return deleted
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 }
